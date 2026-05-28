@@ -47,7 +47,7 @@ public class SigomeiClient extends JFrame {
         // --- PESTAÑA DE CONSULTAS ---
         modelEquipos = new DefaultTableModel(new String[]{"ID", "Nombre", "Tipo", "N/S", "Estado", "Criticidad"}, 0);
         modelTecnicos = new DefaultTableModel(new String[]{"ID", "Nombre", "RFC", "Especialidad", "Nivel", "Estatus"}, 0);
-        modelOrdenes = new DefaultTableModel(new String[]{"ID", "Eq", "Tec", "Estatus", "Prog", "Costo"}, 0);
+        modelOrdenes = new DefaultTableModel(new String[]{"ID", "ID Eq", "ID Tec", "Descripción", "Costo", "Estado"}, 0);
         
         mainTabs.addTab("Visualización de Datos", crearPanelConsultas());
         
@@ -65,17 +65,45 @@ public class SigomeiClient extends JFrame {
     private JPanel crearPanelConsultas() {
         JPanel p = new JPanel(new BorderLayout());
         JTabbedPane subTabs = new JTabbedPane();
-        subTabs.addTab("Equipos", new JScrollPane(new JTable(modelEquipos)));
-        subTabs.addTab("Técnicos", new JScrollPane(new JTable(modelTecnicos)));
-        subTabs.addTab("Órdenes", new JScrollPane(new JTable(modelOrdenes)));
         
-        JButton btnRefrescar = new JButton("REFRESCAR DATOS DESDE EL SERVIDOR");
-        btnRefrescar.setBackground(new Color(33, 150, 243));
-        btnRefrescar.setForeground(Color.WHITE);
+        JTable tableEq = new JTable(modelEquipos);
+        JTable tableTec = new JTable(modelTecnicos);
+        JTable tableOrd = new JTable(modelOrdenes);
+
+        subTabs.addTab("Equipos", new JScrollPane(tableEq));
+        subTabs.addTab("Técnicos", new JScrollPane(tableTec));
+        subTabs.addTab("Órdenes", new JScrollPane(tableOrd));
+
+        JPanel commandPanel = new JPanel(new GridLayout(1, 3, 5, 5));
+        
+        JButton btnModificar = new JButton("MODIFICAR SELECCIONADO");
+        estilizarBoton(btnModificar, new Color(255, 160, 0));
+        btnModificar.addActionListener(ae -> {
+            int idx = subTabs.getSelectedIndex();
+            if (idx == 0) showEditEquipoDialog(tableEq);
+            else if (idx == 1) showEditTecnicoDialog(tableTec);
+            else if (idx == 2) showEditOrdenDialog(tableOrd);
+        });
+
+        JButton btnEliminar = new JButton("ELIMINAR SELECCIONADO");
+        estilizarBoton(btnEliminar, new Color(211, 47, 47));
+        btnEliminar.addActionListener(ae -> {
+            int idx = subTabs.getSelectedIndex();
+            if (idx == 0) deleteEquipo(tableEq);
+            else if (idx == 1) deleteTecnico(tableTec);
+            else if (idx == 2) deleteOrden(tableOrd);
+        });
+
+        JButton btnRefrescar = new JButton("REFRESCAR DATOS");
+        estilizarBoton(btnRefrescar, new Color(33, 150, 243));
         btnRefrescar.addActionListener(ae -> refrescarTablas());
-        
+
+        commandPanel.add(btnRefrescar);
+        commandPanel.add(btnModificar);
+        commandPanel.add(btnEliminar);
+
         p.add(subTabs, BorderLayout.CENTER);
-        p.add(btnRefrescar, BorderLayout.SOUTH);
+        p.add(commandPanel, BorderLayout.SOUTH);
         return p;
     }
 
@@ -97,10 +125,176 @@ public class SigomeiClient extends JFrame {
             String resOrd = sendDirectRequest("ORDEN_LISTAR", null);
             List<OrdenMantenimiento> ords = mapper.readValue(resOrd, new TypeReference<List<OrdenMantenimiento>>(){});
             modelOrdenes.setRowCount(0);
-            for(OrdenMantenimiento o : ords) modelOrdenes.addRow(new Object[]{o.getIdOrden(), o.getIdEquipo(), o.getIdTecnico(), o.getEstadoOrden(), o.getFechaProgramada(), o.getCostoEstimado()});
+            for(OrdenMantenimiento o : ords) modelOrdenes.addRow(new Object[]{o.getIdOrden(), o.getIdEquipo(), o.getIdTecnico(), o.getDescripcionTrabajo(), o.getCostoEstimado(), o.getEstadoOrden()});
             
             logArea.append("[CONSULTA] Tablas actualizadas con el estado actual de la BD.\n");
         } catch (Exception ex) { logArea.append("Error al refrescar: " + ex.getMessage() + "\n"); }
+    }
+
+    private void showEditEquipoDialog(JTable table) {
+        int row = table.getSelectedRow();
+        if (row < 0) { JOptionPane.showMessageDialog(this, "Seleccione un equipo."); return; }
+        int id = (int) table.getValueAt(row, 0);
+        
+        try {
+            // Obtener el objeto completo del servidor
+            Map<String, Object> reqB = new HashMap<>(); reqB.put("id_equipo", id);
+            String fullJson = sendDirectRequest("EQUIPO_BUSCAR", reqB);
+            Equipo fullEq = mapper.readValue(fullJson, Equipo.class);
+
+            JPanel p = new JPanel(new GridLayout(0, 2, 5, 5));
+            JTextField txtNom = new JTextField(fullEq.getNombre());
+            JComboBox<String> cbTipo = new JComboBox<>(new String[]{"Eléctrico", "Mecánico", "Instrumentación", "Hidráulico"});
+            cbTipo.setSelectedItem(fullEq.getTipo());
+            JTextField txtMar = new JTextField(fullEq.getMarca());
+            JTextField txtMod = new JTextField(fullEq.getModelo());
+            JTextField txtSer = new JTextField(fullEq.getNumeroSerie());
+            JTextField txtUbi = new JTextField(fullEq.getUbicacionPlanta());
+            JTextField txtFec = new JTextField(fullEq.getFechaInstalacion() != null ? fullEq.getFechaInstalacion().toString() : "");
+            JComboBox<String> cbEst = new JComboBox<>(new String[]{"Operativo", "En reparación"});
+            cbEst.setSelectedItem(fullEq.getEstadoOperativo());
+            JComboBox<String> cbCri = new JComboBox<>(new String[]{"Baja", "Media", "Alta"});
+            cbCri.setSelectedItem(fullEq.getCriticidad());
+            
+            p.add(new JLabel("Nombre:")); p.add(txtNom); p.add(new JLabel("Tipo:")); p.add(cbTipo);
+            p.add(new JLabel("Marca:")); p.add(txtMar); p.add(new JLabel("Modelo:")); p.add(txtMod);
+            p.add(new JLabel("N/S:")); p.add(txtSer); p.add(new JLabel("Ubicación:")); p.add(txtUbi);
+            p.add(new JLabel("Fecha:")); p.add(txtFec); p.add(new JLabel("Estado:")); p.add(cbEst);
+            p.add(new JLabel("Criticidad:")); p.add(cbCri);
+            
+            if (JOptionPane.showConfirmDialog(this, p, "MODIFICAR EQUIPO", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+                fullEq.setNombre(txtNom.getText());
+                fullEq.setTipo(cbTipo.getSelectedItem() != null ? cbTipo.getSelectedItem().toString() : fullEq.getTipo());
+                fullEq.setMarca(txtMar.getText());
+                fullEq.setModelo(txtMod.getText());
+                fullEq.setNumeroSerie(txtSer.getText());
+                fullEq.setUbicacionPlanta(txtUbi.getText());
+                if (!txtFec.getText().isEmpty()) fullEq.setFechaInstalacion(LocalDate.parse(txtFec.getText()));
+                fullEq.setEstadoOperativo(cbEst.getSelectedItem() != null ? cbEst.getSelectedItem().toString() : fullEq.getEstadoOperativo());
+                fullEq.setCriticidad(cbCri.getSelectedItem() != null ? cbCri.getSelectedItem().toString() : fullEq.getCriticidad());
+
+                sendRequest("EQUIPO_ACTUALIZAR", fullEq);
+                refrescarTablas();
+            }
+        } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Error al obtener datos: " + ex.getMessage()); }
+    }
+
+    private void showEditTecnicoDialog(JTable table) {
+        int row = table.getSelectedRow();
+        if (row < 0) { JOptionPane.showMessageDialog(this, "Seleccione un técnico."); return; }
+        int id = (int) table.getValueAt(row, 0);
+        
+        try {
+            Map<String, Object> reqB = new HashMap<>(); reqB.put("id_tecnico", id);
+            String fullJson = sendDirectRequest("TECNICO_BUSCAR", reqB);
+            Tecnico fullTec = mapper.readValue(fullJson, Tecnico.class);
+
+            JPanel p = new JPanel(new GridLayout(0, 2, 5, 5));
+            JTextField txtNom = new JTextField(fullTec.getNombreCompleto());
+            JTextField txtRfc = new JTextField(fullTec.getRfc());
+            JTextField txtTel = new JTextField(fullTec.getTelefono());
+            JTextField txtCor = new JTextField(fullTec.getCorreo());
+            JComboBox<String> cbEsp = new JComboBox<>(new String[]{"Eléctrico", "Mecánico", "Instrumentación", "Hidráulico"});
+            cbEsp.setSelectedItem(fullTec.getEspecialidad());
+            JComboBox<String> cbNiv = new JComboBox<>(new String[]{"I", "II", "III"});
+            cbNiv.setSelectedItem(fullTec.getNivelCertificacion());
+            JTextField txtFec = new JTextField(fullTec.getFechaIngreso() != null ? fullTec.getFechaIngreso().toString() : "");
+            JComboBox<String> cbEst = new JComboBox<>(new String[]{"Activo", "Inactivo"});
+            cbEst.setSelectedItem(fullTec.getEstatus());
+            
+            p.add(new JLabel("Nombre:")); p.add(txtNom); p.add(new JLabel("RFC:")); p.add(txtRfc);
+            p.add(new JLabel("Teléfono:")); p.add(txtTel); p.add(new JLabel("Correo:")); p.add(txtCor);
+            p.add(new JLabel("Esp:")); p.add(cbEsp); p.add(new JLabel("Nivel:")); p.add(cbNiv);
+            p.add(new JLabel("Fecha:")); p.add(txtFec); p.add(new JLabel("Estatus:")); p.add(cbEst);
+            
+            if (JOptionPane.showConfirmDialog(this, p, "MODIFICAR TÉCNICO", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+                fullTec.setNombreCompleto(txtNom.getText());
+                fullTec.setRfc(txtRfc.getText());
+                fullTec.setTelefono(txtTel.getText());
+                fullTec.setCorreo(txtCor.getText());
+                fullTec.setEspecialidad(cbEsp.getSelectedItem() != null ? cbEsp.getSelectedItem().toString() : fullTec.getEspecialidad());
+                fullTec.setNivelCertificacion(cbNiv.getSelectedItem() != null ? cbNiv.getSelectedItem().toString() : fullTec.getNivelCertificacion());
+                if (!txtFec.getText().isEmpty()) fullTec.setFechaIngreso(LocalDate.parse(txtFec.getText()));
+                fullTec.setEstatus(cbEst.getSelectedItem() != null ? cbEst.getSelectedItem().toString() : fullTec.getEstatus());
+
+                sendRequest("TECNICO_ACTUALIZAR", fullTec);
+                refrescarTablas();
+            }
+        } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage()); }
+    }
+
+    private void showEditOrdenDialog(JTable table) {
+        int row = table.getSelectedRow();
+        if (row < 0) { JOptionPane.showMessageDialog(this, "Seleccione una orden."); return; }
+        int id = (int) table.getValueAt(row, 0);
+        
+        try {
+            Map<String, Object> reqB = new HashMap<>(); reqB.put("id_orden", id);
+            String fullJson = sendDirectRequest("ORDEN_BUSCAR", reqB);
+            OrdenMantenimiento fullOrd = mapper.readValue(fullJson, OrdenMantenimiento.class);
+
+            JPanel p = new JPanel(new GridLayout(0, 2, 5, 5));
+            JTextField txtEq = new JTextField(String.valueOf(fullOrd.getIdEquipo()));
+            JTextField txtTec = new JTextField(String.valueOf(fullOrd.getIdTecnico()));
+            JComboBox<String> cbTipo = new JComboBox<>(new String[]{"Preventivo", "Correctivo"});
+            cbTipo.setSelectedItem(fullOrd.getTipoMantenimiento());
+            JTextField txtFec = new JTextField(fullOrd.getFechaProgramada() != null ? fullOrd.getFechaProgramada().toString() : "");
+            JTextField txtDes = new JTextField(fullOrd.getDescripcionTrabajo());
+            JTextField txtCos = new JTextField(String.valueOf(fullOrd.getCostoEstimado()));
+            JComboBox<String> cbEst = new JComboBox<>(new String[]{"Programada", "En ejecución", "Finalizada"});
+            cbEst.setSelectedItem(fullOrd.getEstadoOrden());
+            
+            p.add(new JLabel("ID Equipo:")); p.add(txtEq); p.add(new JLabel("ID Técnico:")); p.add(txtTec);
+            p.add(new JLabel("Tipo:")); p.add(cbTipo); p.add(new JLabel("Fecha:")); p.add(txtFec);
+            p.add(new JLabel("Descripción:")); p.add(txtDes); p.add(new JLabel("Costo Est.:")); p.add(txtCos);
+            p.add(new JLabel("Estado:")); p.add(cbEst);
+            
+            if (JOptionPane.showConfirmDialog(this, p, "MODIFICAR ORDEN", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+                fullOrd.setIdEquipo(Integer.parseInt(txtEq.getText()));
+                fullOrd.setIdTecnico(Integer.parseInt(txtTec.getText()));
+                fullOrd.setTipoMantenimiento(cbTipo.getSelectedItem() != null ? cbTipo.getSelectedItem().toString() : fullOrd.getTipoMantenimiento());
+                if (!txtFec.getText().isEmpty()) fullOrd.setFechaProgramada(LocalDate.parse(txtFec.getText()));
+                fullOrd.setDescripcionTrabajo(txtDes.getText());
+                fullOrd.setCostoEstimado(Double.parseDouble(txtCos.getText()));
+                fullOrd.setEstadoOrden(cbEst.getSelectedItem() != null ? cbEst.getSelectedItem().toString() : fullOrd.getEstadoOrden());
+
+                sendRequest("ORDEN_ACTUALIZAR", fullOrd);
+                refrescarTablas();
+            }
+        } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage()); }
+    }
+
+    private void deleteEquipo(JTable table) {
+        int row = table.getSelectedRow();
+        if (row < 0) { JOptionPane.showMessageDialog(this, "Seleccione un equipo."); return; }
+        int id = (int) table.getValueAt(row, 0);
+        if (JOptionPane.showConfirmDialog(this, "¿Eliminar equipo " + id + "?", "CONFIRMAR", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            Map<String, Object> d = new HashMap<>(); d.put("id_equipo", id);
+            sendRequest("EQUIPO_ELIMINAR", d);
+            refrescarTablas();
+        }
+    }
+
+    private void deleteTecnico(JTable table) {
+        int row = table.getSelectedRow();
+        if (row < 0) { JOptionPane.showMessageDialog(this, "Seleccione un técnico."); return; }
+        int id = (int) table.getValueAt(row, 0);
+        if (JOptionPane.showConfirmDialog(this, "¿Eliminar técnico " + id + "?", "CONFIRMAR", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            Map<String, Object> d = new HashMap<>(); d.put("id_tecnico", id);
+            sendRequest("TECNICO_ELIMINAR", d);
+            refrescarTablas();
+        }
+    }
+
+    private void deleteOrden(JTable table) {
+        int row = table.getSelectedRow();
+        if (row < 0) { JOptionPane.showMessageDialog(this, "Seleccione una orden."); return; }
+        int id = (int) table.getValueAt(row, 0);
+        if (JOptionPane.showConfirmDialog(this, "¿Eliminar orden " + id + "?", "CONFIRMAR", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            Map<String, Object> d = new HashMap<>(); d.put("id_orden", id);
+            sendRequest("ORDEN_ELIMINAR", d);
+            refrescarTablas();
+        }
     }
 
     // El resto de los paneles de registro (Iguales que antes pero consolidados)

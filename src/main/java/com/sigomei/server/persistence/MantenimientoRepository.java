@@ -1,12 +1,15 @@
 package com.sigomei.server.persistence;
 
+import java.util.List;
+
 import com.sigomei.server.model.Equipo;
 import com.sigomei.server.model.OrdenMantenimiento;
 import com.sigomei.server.model.Tecnico;
-import java.util.List;
 
 public interface MantenimientoRepository {
     Integer saveEquipo(Equipo equipo);
+
+    void deleteEquipo(Integer id);
 
     Equipo findEquipoById(Integer id);
 
@@ -18,7 +21,13 @@ public interface MantenimientoRepository {
 
     Integer saveOrden(OrdenMantenimiento orden);
 
+    void deleteOrden(Integer id);
+
     void updateOrden(OrdenMantenimiento orden);
+
+    void updateEquipo(Equipo equipo);
+
+    void updateTecnico(Tecnico tecnico);
 
     OrdenMantenimiento findOrdenById(Integer id);
 

@@ -1,5 +1,15 @@
 package com.sigomei.server.network;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -10,13 +20,6 @@ import com.sigomei.server.persistence.MantenimientoRepositoryJDBC;
 import com.sigomei.server.service.MantenimientoService;
 import com.sigomei.server.service.MantenimientoServiceImpl;
 import com.sigomei.server.service.exception.BusinessRuleException;
-
-import java.io.*;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.logging.FileHandler;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 public class SigomeiServer {
     private static final int PORT = 8050;
@@ -108,6 +111,43 @@ public class SigomeiServer {
                         OrdenMantenimiento of = mapper.treeToValue(payload, OrdenMantenimiento.class);
                         service.finalizarOrden(of);
                         result = "RES_OK: Orden finalizada.";
+                        break;
+                    case "EQUIPO_ELIMINAR":
+                        int idEq = payload.get("id_equipo").asInt();
+                        service.eliminarEquipo(idEq);
+                        result = "RES_OK: Equipo eliminado.";
+                        break;
+                    case "ORDEN_ELIMINAR":
+                        int idOrd = payload.get("id_orden").asInt();
+                        service.eliminarOrden(idOrd);
+                        result = "RES_OK: Orden eliminada.";
+                        break;
+                    case "EQUIPO_ACTUALIZAR":
+                        Equipo ea = mapper.treeToValue(payload, Equipo.class);
+                        service.actualizarEquipo(ea);
+                        result = "RES_OK: Equipo actualizado.";
+                        break;
+                    case "TECNICO_ACTUALIZAR":
+                        Tecnico ta = mapper.treeToValue(payload, Tecnico.class);
+                        service.actualizarTecnico(ta);
+                        result = "RES_OK: Técnico actualizado.";
+                        break;
+                    case "ORDEN_ACTUALIZAR":
+                        OrdenMantenimiento oa = mapper.treeToValue(payload, OrdenMantenimiento.class);
+                        service.actualizarOrden(oa);
+                        result = "RES_OK: Orden actualizada.";
+                        break;
+                    case "EQUIPO_BUSCAR":
+                        int idEB = payload.get("id_equipo").asInt();
+                        result = service.obtenerEquipo(idEB);
+                        break;
+                    case "TECNICO_BUSCAR":
+                        int idTB = payload.get("id_tecnico").asInt();
+                        result = service.obtenerTecnico(idTB);
+                        break;
+                    case "ORDEN_BUSCAR":
+                        int idOB = payload.get("id_orden").asInt();
+                        result = service.obtenerOrden(idOB);
                         break;
                     case "EQUIPO_LISTAR":
                         result = service.listarEquipos();

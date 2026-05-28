@@ -73,8 +73,14 @@ public class SigomeiGUI extends JFrame {
         btnAdd.addActionListener(e -> showAddEquipoDialog());
         JButton btnRefresh = new JButton("Actualizar");
         btnRefresh.addActionListener(e -> refreshEquipos());
+        JButton btnDelete = new JButton("Eliminar");
+        btnDelete.addActionListener(e -> deleteEquipo());
         
         actions.add(btnAdd);
+        JButton btnEdit = new JButton("Modificar");
+        btnEdit.addActionListener(e -> showEditEquipoDialog());
+        actions.add(btnEdit);
+        actions.add(btnDelete);
         actions.add(btnRefresh);
         panel.add(actions, BorderLayout.NORTH);
         
@@ -98,6 +104,9 @@ public class SigomeiGUI extends JFrame {
         btnRefresh.addActionListener(e -> refreshTecnicos());
         
         actions.add(btnAdd);
+        JButton btnEdit = new JButton("Modificar");
+        btnEdit.addActionListener(e -> showEditTecnicoDialog());
+        actions.add(btnEdit);
         actions.add(btnDelete);
         actions.add(btnRefresh);
         panel.add(actions, BorderLayout.NORTH);
@@ -120,9 +129,15 @@ public class SigomeiGUI extends JFrame {
         btnFinish.addActionListener(e -> finishOrden());
         JButton btnRefresh = new JButton("Actualizar");
         btnRefresh.addActionListener(e -> refreshOrdenes());
+        JButton btnDelete = new JButton("Eliminar");
+        btnDelete.addActionListener(e -> deleteOrden());
         
         actions.add(btnAdd);
+        JButton btnEdit = new JButton("Modificar");
+        btnEdit.addActionListener(e -> showEditOrdenDialog());
+        actions.add(btnEdit);
         actions.add(btnFinish);
+        actions.add(btnDelete);
         actions.add(btnRefresh);
         panel.add(actions, BorderLayout.NORTH);
         
@@ -165,6 +180,48 @@ public class SigomeiGUI extends JFrame {
         }
     }
 
+    private void showEditEquipoDialog() {
+        int row = tableEquipos.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione un equipo.");
+            return;
+        }
+        int id = (int) modelEquipos.getValueAt(row, 0);
+
+        JPanel panel = new JPanel(new GridLayout(0, 2));
+        JTextField txtNombre = new JTextField(modelEquipos.getValueAt(row, 1).toString());
+        JComboBox<String> cbTipo = new JComboBox<>(new String[] { "Mecánico", "Eléctrico", "Electrónico", "Hidráulico" });
+        cbTipo.setSelectedItem(modelEquipos.getValueAt(row, 2).toString());
+        JTextField txtMarca = new JTextField(modelEquipos.getValueAt(row, 3).toString());
+        JTextField txtModelo = new JTextField(modelEquipos.getValueAt(row, 4).toString());
+        JTextField txtUbicacion = new JTextField(modelEquipos.getValueAt(row, 5).toString());
+        JComboBox<String> cbCriticidad = new JComboBox<>(new String[] { "Baja", "Media", "Alta" });
+        cbCriticidad.setSelectedItem(modelEquipos.getValueAt(row, 7).toString());
+
+        panel.add(new JLabel("Nombre:")); panel.add(txtNombre);
+        panel.add(new JLabel("Tipo:")); panel.add(cbTipo);
+        panel.add(new JLabel("Marca:")); panel.add(txtMarca);
+        panel.add(new JLabel("Modelo:")); panel.add(txtModelo);
+        panel.add(new JLabel("Ubicación:")); panel.add(txtUbicacion);
+        panel.add(new JLabel("Criticidad:")); panel.add(cbCriticidad);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Modificar Equipo", JOptionPane.OK_CANCEL_OPTION);
+        if (result == JOptionPane.OK_OPTION) {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("idEquipo", id);
+            payload.put("nombre", txtNombre.getText());
+            payload.put("tipo", cbTipo.getSelectedItem());
+            payload.put("marca", txtMarca.getText());
+            payload.put("modelo", txtModelo.getText());
+            payload.put("ubicacionPlanta", txtUbicacion.getText());
+            payload.put("criticidad", cbCriticidad.getSelectedItem());
+            payload.put("estadoOperativo", modelEquipos.getValueAt(row, 6).toString());
+
+            sendRequest("EQUIPO_ACTUALIZAR", payload);
+            refreshEquipos();
+        }
+    }
+
     private void showAddTecnicoDialog() {
         JPanel panel = new JPanel(new GridLayout(0, 2));
         JTextField txtNombre = new JTextField();
@@ -195,6 +252,61 @@ public class SigomeiGUI extends JFrame {
             
             sendRequest("TECNICO_CREAR", payload);
             refreshTecnicos();
+        }
+    }
+
+    private void showEditTecnicoDialog() {
+        int row = tableTecnicos.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione un técnico.");
+            return;
+        }
+        int id = (int) modelTecnicos.getValueAt(row, 0);
+
+        JPanel panel = new JPanel(new GridLayout(0, 2));
+        JTextField txtNombre = new JTextField(modelTecnicos.getValueAt(row, 1).toString());
+        JTextField txtRfc = new JTextField(modelTecnicos.getValueAt(row, 2).toString());
+        JComboBox<String> cbEspecialidad = new JComboBox<>(new String[] { "Mecánico", "Eléctrico", "Electrónico", "Hidráulico" });
+        cbEspecialidad.setSelectedItem(modelTecnicos.getValueAt(row, 3).toString());
+        JComboBox<String> cbNivel = new JComboBox<>(new String[] { "I", "II", "III" });
+        cbNivel.setSelectedItem(modelTecnicos.getValueAt(row, 4).toString());
+        JComboBox<String> cbEstatus = new JComboBox<>(new String[] { "Activo", "Inactivo" });
+        cbEstatus.setSelectedItem(modelTecnicos.getValueAt(row, 5).toString());
+
+        panel.add(new JLabel("Nombre Completo:")); panel.add(txtNombre);
+        panel.add(new JLabel("RFC:")); panel.add(txtRfc);
+        panel.add(new JLabel("Especialidad:")); panel.add(cbEspecialidad);
+        panel.add(new JLabel("Nivel:")); panel.add(cbNivel);
+        panel.add(new JLabel("Estatus:")); panel.add(cbEstatus);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Modificar Técnico", JOptionPane.OK_CANCEL_OPTION);
+        if (result == JOptionPane.OK_OPTION) {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("idTecnico", id);
+            payload.put("nombreCompleto", txtNombre.getText());
+            payload.put("rfc", txtRfc.getText());
+            payload.put("especialidad", cbEspecialidad.getSelectedItem());
+            payload.put("nivelCertificacion", cbNivel.getSelectedItem());
+            payload.put("estatus", cbEstatus.getSelectedItem());
+
+            sendRequest("TECNICO_ACTUALIZAR", payload);
+            refreshTecnicos();
+        }
+    }
+
+    private void deleteEquipo() {
+        int row = tableEquipos.getSelectedRow();
+        if (row >= 0) {
+            int id = (int) tableEquipos.getValueAt(row, 0);
+            int confirm = JOptionPane.showConfirmDialog(this, "¿Está seguro de eliminar este equipo?", "Confirmar", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("id_equipo", id);
+                sendRequest("EQUIPO_ELIMINAR", payload);
+                refreshEquipos();
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Seleccione un equipo.");
         }
     }
 
@@ -230,6 +342,64 @@ public class SigomeiGUI extends JFrame {
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(this, "Error en los datos: " + e.getMessage());
             }
+        }
+    }
+
+    private void showEditOrdenDialog() {
+        int row = tableOrdenes.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione una orden.");
+            return;
+        }
+        int id = (int) modelOrdenes.getValueAt(row, 0);
+
+        JPanel panel = new JPanel(new GridLayout(0, 2));
+        JTextField txtIdEq = new JTextField(modelOrdenes.getValueAt(row, 1).toString());
+        JTextField txtIdTec = new JTextField(modelOrdenes.getValueAt(row, 2).toString());
+        JComboBox<String> cbTipo = new JComboBox<>(new String[] { "Preventivo", "Correctivo", "Predictivo" });
+        cbTipo.setSelectedItem(modelOrdenes.getValueAt(row, 3).toString());
+        JTextField txtFecha = new JTextField(modelOrdenes.getValueAt(row, 4).toString());
+        JTextField txtCosto = new JTextField(modelOrdenes.getValueAt(row, 6).toString());
+
+        panel.add(new JLabel("ID Equipo:")); panel.add(txtIdEq);
+        panel.add(new JLabel("ID Técnico:")); panel.add(txtIdTec);
+        panel.add(new JLabel("Tipo:")); panel.add(cbTipo);
+        panel.add(new JLabel("Fecha Prog (YYYY-MM-DD):")); panel.add(txtFecha);
+        panel.add(new JLabel("Costo Est.:")); panel.add(txtCosto);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Modificar Orden", JOptionPane.OK_CANCEL_OPTION);
+        if (result == JOptionPane.OK_OPTION) {
+            try {
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("idOrden", id);
+                payload.put("idEquipo", Integer.parseInt(txtIdEq.getText()));
+                payload.put("idTecnico", Integer.parseInt(txtIdTec.getText()));
+                payload.put("tipoMantenimiento", cbTipo.getSelectedItem());
+                payload.put("fechaProgramada", txtFecha.getText());
+                payload.put("costoEstimado", Double.parseDouble(txtCosto.getText()));
+                payload.put("estadoOrden", modelOrdenes.getValueAt(row, 5).toString());
+
+                sendRequest("ORDEN_ACTUALIZAR", payload);
+                refreshOrdenes();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Error en los datos: " + e.getMessage());
+            }
+        }
+    }
+
+    private void deleteOrden() {
+        int row = tableOrdenes.getSelectedRow();
+        if (row >= 0) {
+            int id = (int) tableOrdenes.getValueAt(row, 0);
+            int confirm = JOptionPane.showConfirmDialog(this, "¿Está seguro de eliminar esta orden?", "Confirmar", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("id_orden", id);
+                sendRequest("ORDEN_ELIMINAR", payload);
+                refreshOrdenes();
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Seleccione una orden.");
         }
     }
 

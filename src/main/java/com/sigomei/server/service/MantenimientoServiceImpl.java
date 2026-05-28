@@ -32,6 +32,21 @@ public class MantenimientoServiceImpl implements MantenimientoService {
     }
 
     @Override
+    public void actualizarEquipo(Equipo equipo) {
+        repository.updateEquipo(equipo);
+    }
+
+    @Override
+    public void eliminarEquipo(Integer id) {
+        // Validación: No borrar equipo si tiene órdenes registradas
+        List<OrdenMantenimiento> ordenes = repository.findOrdenesByEquipo(id);
+        if (!ordenes.isEmpty()) {
+            throw new BusinessRuleException("RN-04_EQ", "No se puede eliminar el equipo porque tiene órdenes asociadas.");
+        }
+        repository.deleteEquipo(id);
+    }
+
+    @Override
     public Integer crearTecnico(Tecnico tecnico) {
         return repository.saveTecnico(tecnico);
     }
@@ -55,6 +70,11 @@ public class MantenimientoServiceImpl implements MantenimientoService {
     @Override
     public List<Tecnico> listarTecnicos() {
         return repository.findAllTecnicos();
+    }
+
+    @Override
+    public void actualizarTecnico(Tecnico tecnico) {
+        repository.updateTecnico(tecnico);
     }
 
     @Override
@@ -139,5 +159,35 @@ public class MantenimientoServiceImpl implements MantenimientoService {
     @Override
     public List<OrdenMantenimiento> listarOrdenes() {
         return repository.findAllOrdenes();
+    }
+
+    @Override
+    public void actualizarOrden(OrdenMantenimiento orden) {
+        // Al actualizar una orden, validamos reglas clave si se cambia equipo o técnico
+        Equipo equipo = repository.findEquipoById(orden.getIdEquipo());
+        Tecnico tecnico = repository.findTecnicoById(orden.getIdTecnico());
+
+        if (equipo != null && tecnico != null) {
+            if (!tecnico.getEspecialidad().equals(equipo.getTipo())) {
+                throw new BusinessRuleException("RN-01", "La especialidad del técnico no coincide con el tipo de equipo.");
+            }
+            if ("Inactivo".equals(tecnico.getEstatus())) {
+                throw new BusinessRuleException("RN-03", "El técnico asignado está inactivo.");
+            }
+            if ("Alta".equals(equipo.getCriticidad()) && "I".equals(tecnico.getNivelCertificacion())) {
+                throw new BusinessRuleException("RN-07", "Equipos de criticidad Alta requieren técnicos nivel II o III.");
+            }
+        }
+        repository.updateOrden(orden);
+    }
+
+    @Override
+    public void eliminarOrden(Integer id) {
+        repository.deleteOrden(id);
+    }
+
+    @Override
+    public OrdenMantenimiento obtenerOrden(Integer id) {
+        return repository.findOrdenById(id);
     }
 }

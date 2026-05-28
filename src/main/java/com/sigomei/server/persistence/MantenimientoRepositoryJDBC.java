@@ -66,6 +66,20 @@ public class MantenimientoRepositoryJDBC implements MantenimientoRepository {
     }
 
     @Override
+    public void deleteEquipo(Integer id) {
+        if (id == null)
+            return;
+        String sql = "DELETE FROM equipo WHERE id_equipo = ?";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            log("Error deleteEquipo: " + e.getMessage());
+        }
+    }
+
+    @Override
     public Equipo findEquipoById(Integer id) {
         if (id == null)
             return null;
@@ -186,19 +200,77 @@ public class MantenimientoRepositoryJDBC implements MantenimientoRepository {
     }
 
     @Override
-    public void updateOrden(OrdenMantenimiento orden) {
-        String sql = "UPDATE orden_mantenimiento SET estado_orden = ?, fecha_inicio = ?, fecha_cierre = ?, costo_real = ?, descripcion_trabajo = ? WHERE id_orden = ?";
+    public void deleteOrden(Integer id) {
+        if (id == null)
+            return;
+        String sql = "DELETE FROM orden_mantenimiento WHERE id_orden = ?";
         try (Connection conn = getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, orden.getEstadoOrden());
-            ps.setObject(2, orden.getFechaInicio() != null ? java.sql.Date.valueOf(orden.getFechaInicio()) : null);
-            ps.setObject(3, orden.getFechaCierre() != null ? java.sql.Date.valueOf(orden.getFechaCierre()) : null);
-            ps.setObject(4, orden.getCostoReal());
-            ps.setString(5, orden.getDescripcionTrabajo());
-            ps.setInt(6, orden.getIdOrden());
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            log("Error deleteOrden: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void updateOrden(OrdenMantenimiento orden) {
+        String sql = "UPDATE orden_mantenimiento SET id_equipo = ?, id_tecnico = ?, tipo_mantenimiento = ?, fecha_programada = ?, estado_orden = ?, fecha_inicio = ?, fecha_cierre = ?, costo_real = ?, descripcion_trabajo = ? WHERE id_orden = ?";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orden.getIdEquipo());
+            ps.setInt(2, orden.getIdTecnico());
+            ps.setString(3, orden.getTipoMantenimiento());
+            ps.setDate(4, java.sql.Date.valueOf(orden.getFechaProgramada()));
+            ps.setString(5, orden.getEstadoOrden());
+            ps.setObject(6, orden.getFechaInicio() != null ? java.sql.Date.valueOf(orden.getFechaInicio()) : null);
+            ps.setObject(7, orden.getFechaCierre() != null ? java.sql.Date.valueOf(orden.getFechaCierre()) : null);
+            ps.setObject(8, orden.getCostoReal());
+            ps.setString(9, orden.getDescripcionTrabajo());
+            ps.setInt(10, orden.getIdOrden());
             ps.executeUpdate();
         } catch (SQLException e) {
             log("Error updateOrden: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void updateEquipo(Equipo equipo) {
+        String sql = "UPDATE equipo SET nombre = ?, tipo = ?, marca = ?, modelo = ?, numero_serie = ?, ubicacion_planta = ?, fecha_instalacion = ?, estado_operativo = ?, criticidad = ? WHERE id_equipo = ?";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, equipo.getNombre());
+            ps.setString(2, equipo.getTipo());
+            ps.setString(3, equipo.getMarca());
+            ps.setString(4, equipo.getModelo());
+            ps.setString(5, equipo.getNumeroSerie());
+            ps.setString(6, equipo.getUbicacionPlanta());
+            ps.setDate(7, java.sql.Date.valueOf(equipo.getFechaInstalacion()));
+            ps.setString(8, equipo.getEstadoOperativo());
+            ps.setString(9, equipo.getCriticidad());
+            ps.setInt(10, equipo.getIdEquipo());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            log("Error updateEquipo: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void updateTecnico(Tecnico tecnico) {
+        String sql = "UPDATE tecnico SET nombre_completo = ?, rfc = ?, telefono = ?, correo = ?, especialidad = ?, nivel_certificacion = ?, estatus = ? WHERE id_tecnico = ?";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, tecnico.getNombreCompleto());
+            ps.setString(2, tecnico.getRfc());
+            ps.setString(3, tecnico.getTelefono());
+            ps.setString(4, tecnico.getCorreo());
+            ps.setString(5, tecnico.getEspecialidad());
+            ps.setString(6, tecnico.getNivelCertificacion());
+            ps.setString(7, tecnico.getEstatus());
+            ps.setInt(8, tecnico.getIdTecnico());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            log("Error updateTecnico: " + e.getMessage());
         }
     }
 
